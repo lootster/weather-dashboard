@@ -19,9 +19,11 @@ export const getWeatherData = async () => {
         end_date: END_DATE,
       },
     });
+    console.log("API Response:", response.data); // <--- Log the response here
     return response.data;
   } catch (error) {
     console.error('Error fetching weather data', error);
     throw error;
   }
 };
+

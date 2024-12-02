@@ -25,6 +25,14 @@
     justify-content: center;
 }
 
+.offline {
+    background-color: #f0f8ff;
+}
+
+.api {
+    background-color: #e8ffe8;
+}
+
 /* Media query for responsiveness on smaller screens */
 @media (max-width: 768px) {
     .container {
