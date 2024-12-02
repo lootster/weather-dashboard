@@ -77,13 +77,7 @@ function App() {
   }
 
   // Ensure that the required data is available
-  if (
-    !weatherData ||
-    !weatherData.hourly?.time ||
-    !weatherData.hourly.relativehumidity_2m ||
-    !weatherData.daily?.temperature_2m_max ||
-    !weatherData.daily.temperature_2m_min
-  ) {
+  if (!weatherData || !weatherData.hourly || !weatherData.daily) {
     return <p>Data is incomplete. Unable to load the dashboard.</p>;
   }
 

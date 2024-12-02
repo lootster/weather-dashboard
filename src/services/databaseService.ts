@@ -17,24 +17,33 @@ export const initializeDatabase = async () => {
     const dbContent = await getPersistedDB();
     db = dbContent ? new SQL.Database(new Uint8Array(dbContent)) : new SQL.Database();
 
-    createWeatherTable(db);
+    createWeatherTables(db);
     return db;
 };
 
-// Create a table for storing weather data
-const createWeatherTable = (db: Database) => {
+// Create 2 tables for storing weather data
+const createWeatherTables = (db: Database) => {
     db.run(`
     CREATE TABLE IF NOT EXISTS weather_data (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       time TEXT,
       humidity INTEGER,
-      max_temp INTEGER,
-      min_temp INTEGER,
       radiation INTEGER,
-      daily_time TEXT
+      max_temp INTEGER,
+      min_temp INTEGER
+    )
+  `);
+
+    db.run(`
+    CREATE TABLE IF NOT EXISTS daily_weather_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      time TEXT,
+      max_temp INTEGER,
+      min_temp INTEGER
     )
   `);
 };
+
 
 // Insert weather data into the database and persist it
 export const saveWeatherData = async (data: any) => {
@@ -42,26 +51,37 @@ export const saveWeatherData = async (data: any) => {
         throw new Error("Database is not initialized");
     }
 
-    console.log("saveWeatherData: Saving the following data to IndexedDB:", data);
-    const insertStmt = `
-    INSERT INTO weather_data (time, humidity, max_temp, min_temp, radiation, daily_time)
-    VALUES (?, ?, ?, ?, ?, ?)
+    // Insert statement for hourly data
+    const insertHourlyStmt = `
+    INSERT INTO weather_data (time, humidity, radiation, max_temp, min_temp)
+    VALUES (?, ?, ?, ?, ?)
   `;
 
+    // Insert statement for daily data
+    const insertDailyStmt = `
+    INSERT INTO daily_weather_data (time, max_temp, min_temp)
+    VALUES (?, ?, ?)
+  `;
+
+    // Insert hourly data into weather_data table
     data.hourly.time.forEach((time: string, index: number) => {
-        const hourlyTime = data.hourly.time[index % data.hourly.time.length];
         const humidity = data.hourly.relativehumidity_2m[index];
         const radiation = data.hourly.direct_radiation[index];
         const maxTemp = data.daily.temperature_2m_max[index % data.daily.temperature_2m_max.length];
         const minTemp = data.daily.temperature_2m_min[index % data.daily.temperature_2m_min.length];
-        const dailyTime = data.daily.time[index % data.daily.time.length];
 
+        db!.run(insertHourlyStmt, [time, humidity, radiation, maxTemp, minTemp]);
+    });
 
-        db!.run(insertStmt, [hourlyTime, humidity, maxTemp, minTemp, radiation, dailyTime]);
+    // Insert daily data into daily_weather_data table
+    data.daily.time.forEach((time: string, index: number) => {
+        const maxTemp = data.daily.temperature_2m_max[index];
+        const minTemp = data.daily.temperature_2m_min[index];
+
+        db!.run(insertDailyStmt, [time, maxTemp, minTemp]);
     });
 
     await persistDatabase(); // Save the database state to IndexedDB
-    console.log("saveWeatherData: Data saved to IndexedDB successfully.");
 };
 
 // Persist the database to IndexedDB
@@ -169,54 +189,39 @@ const getPersistedDB = (): Promise<ArrayBuffer | null> => {
 // Retrieve weather data from the database
 export const getOfflineWeatherData = (): any => {
     if (!db) {
-        console.error("Database is not initialized in getOfflineWeatherData()");
         throw new Error("Database is not initialized");
     }
 
-    const results = db.exec(`
+    // Fetch hourly data
+    const hourlyResults = db.exec(`
     SELECT * FROM weather_data
   `);
 
-    if (results.length === 0) {
-        console.log("getOfflineWeatherData: No data found in the weather_data table.");
+    // Fetch daily data
+    const dailyResults = db.exec(`
+    SELECT * FROM daily_weather_data
+  `);
+
+    if (hourlyResults.length === 0 || dailyResults.length === 0) {
         return null;
     }
 
-    console.log("Query Result", results);
-
-    const rows = results[0].values;
+    const hourlyRows = hourlyResults[0].values;
+    const dailyRows = dailyResults[0].values;
 
     // Convert rows to suitable object
     const data = {
         hourly: {
-            time: rows.map((row) => row[1]),
-            relativehumidity_2m: rows.map((row) => row[2]),
-            direct_radiation: rows.map((row) => row[5]),
+            time: hourlyRows.map((row) => row[1]),
+            relativehumidity_2m: hourlyRows.map((row) => row[2]),
+            direct_radiation: hourlyRows.map((row) => row[3]),
         },
         daily: {
-            time: rows.map((row) => row[6]), // Fetching the daily time from the 7th column
-            temperature_2m_max: rows.map((row) => row[3]),
-            temperature_2m_min: rows.map((row) => row[4]),
-        },
+            time: dailyRows.map((row) => row[1]),
+            temperature_2m_max: dailyRows.map((row) => row[2]),
+            temperature_2m_min: dailyRows.map((row) => row[3]),
+        }
     };
 
     return data;
-};
-
-// Debugging function to check the contents of weather_data
-export const checkWeatherDataTable = () => {
-    if (!db) {
-        console.error("Database is not initialized");
-        return;
-    }
-
-    const results = db.exec(`
-    SELECT * FROM weather_data
-  `);
-
-    if (results.length === 0) {
-        console.log("checkWeatherDataTable: No data found in the weather_data table.");
-    } else {
-        console.log("checkWeatherDataTable: Data found in weather_data table:", results[0].values);
-    }
 };
