@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getWeatherData } from "./services/weatherService";
 import ColumnChart from "./components/ColumnChart";
 import TemperatureLineChart from "./components/LineChart";
+import AreaChart from "./components/AreaChart";
 
 function App() {
   const [weatherData, setWeatherData] = useState<any>(null);
@@ -28,6 +29,7 @@ function App() {
   const labels = weatherData.hourly.time;
   const maxTemp = weatherData.daily.temperature_2m_max || [];
   const minTemp = weatherData.daily.temperature_2m_min || [];
+  const directRadiationData = weatherData.hourly.direct_radiation || [];
 
   return (
     <div className="App">
@@ -38,6 +40,7 @@ function App() {
         maxTemp={maxTemp}
         minTemp={minTemp}
       />
+      <AreaChart data={directRadiationData} labels={labels} />
     </div>
   );
 }
