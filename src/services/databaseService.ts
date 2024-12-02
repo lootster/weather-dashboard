@@ -17,20 +17,18 @@ export const initializeDatabase = async () => {
     const dbContent = await getPersistedDB();
     db = dbContent ? new SQL.Database(new Uint8Array(dbContent)) : new SQL.Database();
 
-    createWeatherTables(db);
+    createWeatherTables(db); // Create necessary tables for weather data storage
     return db;
 };
 
-// Create 2 tables for storing weather data
+// Create 2 tables for storing weather data: one for hourly data, one for daily data
 const createWeatherTables = (db: Database) => {
     db.run(`
     CREATE TABLE IF NOT EXISTS weather_data (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       time TEXT,
       humidity INTEGER,
-      radiation INTEGER,
-      max_temp INTEGER,
-      min_temp INTEGER
+      radiation INTEGER
     )
   `);
 
@@ -51,10 +49,18 @@ export const saveWeatherData = async (data: any) => {
         throw new Error("Database is not initialized");
     }
 
+    // Clear existing data from tables before inserting new data to prevent duplicates
+    db.run(`
+        DELETE FROM weather_data;
+    `);
+    db.run(`
+        DELETE FROM daily_weather_data;
+    `);
+
     // Insert statement for hourly data
     const insertHourlyStmt = `
-    INSERT INTO weather_data (time, humidity, radiation, max_temp, min_temp)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO weather_data (time, humidity, radiation)
+    VALUES (?, ?, ?)
   `;
 
     // Insert statement for daily data
@@ -67,10 +73,8 @@ export const saveWeatherData = async (data: any) => {
     data.hourly.time.forEach((time: string, index: number) => {
         const humidity = data.hourly.relativehumidity_2m[index];
         const radiation = data.hourly.direct_radiation[index];
-        const maxTemp = data.daily.temperature_2m_max[index % data.daily.temperature_2m_max.length];
-        const minTemp = data.daily.temperature_2m_min[index % data.daily.temperature_2m_min.length];
 
-        db!.run(insertHourlyStmt, [time, humidity, radiation, maxTemp, minTemp]);
+        db!.run(insertHourlyStmt, [time, humidity, radiation]);
     });
 
     // Insert daily data into daily_weather_data table
@@ -81,7 +85,7 @@ export const saveWeatherData = async (data: any) => {
         db!.run(insertDailyStmt, [time, maxTemp, minTemp]);
     });
 
-    await persistDatabase(); // Save the database state to IndexedDB
+    await persistDatabase();
 };
 
 // Persist the database to IndexedDB
@@ -98,9 +102,9 @@ const persistDatabase = async () => {
 
     return new Promise<void>((resolve, reject) => {
         request.onupgradeneeded = (event) => {
+            // Create an object store if it does not exist
             const db = (event.target as IDBOpenDBRequest).result;
             if (!db.objectStoreNames.contains(STORE_NAME)) {
-                console.log("Creating object store...");
                 db.createObjectStore(STORE_NAME);
             }
         };
@@ -112,7 +116,6 @@ const persistDatabase = async () => {
             const putRequest = store.put(blob, "weather");
 
             putRequest.onsuccess = () => {
-                console.log("Weather data persisted successfully.");
                 console.log("Data stored in IndexedDB successfully:", dbData);
                 resolve();
             };
@@ -206,18 +209,23 @@ export const getOfflineWeatherData = (): any => {
         return null;
     }
 
+    if (hourlyResults.length === 0 || dailyResults.length === 0) {
+        console.log("No data found in either hourly or daily tables.");
+        return null;
+    }
+
     const hourlyRows = hourlyResults[0].values;
     const dailyRows = dailyResults[0].values;
 
     // Convert rows to suitable object
     const data = {
         hourly: {
-            time: hourlyRows.map((row) => row[1]),
+            time: hourlyRows.map((row) => row[1]), // Map time from hourly data
             relativehumidity_2m: hourlyRows.map((row) => row[2]),
             direct_radiation: hourlyRows.map((row) => row[3]),
         },
         daily: {
-            time: dailyRows.map((row) => row[1]),
+            time: dailyRows.map((row) => row[1]), // Map time from daily data
             temperature_2m_max: dailyRows.map((row) => row[2]),
             temperature_2m_min: dailyRows.map((row) => row[3]),
         }

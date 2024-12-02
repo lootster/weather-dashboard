@@ -27,7 +27,6 @@ function App() {
         await initializeDatabase();
 
         // Try to get offline data if available
-        console.log("Attempting to load offline data...");
         const offlineData = await getOfflineWeatherData();
         if (offlineData) {
           console.log("Offline data retrieved:", offlineData);
@@ -38,11 +37,6 @@ function App() {
         }
 
         // Check the network status and proceed accordingly
-        console.log("Checking network status...");
-        console.log("Is the browser online?", navigator.onLine);
-
-        // If no offline data and network is available, fetch from API
-        // Inside the initializeAndFetchData function
         if (navigator.onLine) {
           console.log("No offline data found. Attempting to fetch from API...");
           const data = await getWeatherData();
@@ -69,11 +63,11 @@ function App() {
   }, []);
 
   if (loading) {
-    return <p>Loading weather data...</p>;
+    return <p>Loading weather data...</p>; // Show a loading message while data is being fetched
   }
 
   if (error) {
-    return <p className={styles.error}>{error}</p>;
+    return <p className={styles.error}>{error}</p>; // Show an error message if there is an error or if the app is offline with no data
   }
 
   // Ensure that the required data is available
@@ -83,14 +77,17 @@ function App() {
 
   // Extract relevant data for relative humidity chart
   const humidityData = weatherData.hourly.relativehumidity_2m;
+
   // Labels for hourly data (relative humidity and radiation)
   const hourlyLabels = weatherData.hourly.time.map((timestamp: string) =>
     format(new Date(timestamp), "dd MMM yyyy, HH:mm")
   );
+
   // Labels for daily data (temperature)
   const dailyLabels = weatherData.daily.time.map((timestamp: string) =>
     format(new Date(timestamp), "dd MMM yyyy")
   );
+  
   const maxTemp = weatherData.daily.temperature_2m_max || [];
   const minTemp = weatherData.daily.temperature_2m_min || [];
   const directRadiationData = weatherData.hourly.direct_radiation || [];
