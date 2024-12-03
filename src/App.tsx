@@ -28,34 +28,32 @@ function App() {
 
   // Extract relevant data for relative humidity chart
   const humidityData = weatherData.hourly.relativehumidity_2m;
+  const maxTemp = weatherData.daily.temperature_2m_max || [];
+  const minTemp = weatherData.daily.temperature_2m_min || [];
+  const directRadiationData = weatherData.hourly.direct_radiation || [];
+
   // Labels for hourly data (relative humidity and radiation)
   const hourlyLabels = weatherData.hourly.time.map((timestamp: string) =>
-   format(new Date(timestamp), "dd MMM yyyy, HH:mm")
- );
+    format(new Date(timestamp), "dd MMM yyyy, HH:mm")
+  );
 
   // Labels for daily data (temperature)
   const dailyLabels = weatherData.daily.time.map((timestamp: string) =>
     format(new Date(timestamp), "dd MMM yyyy")
   );
-  const maxTemp = weatherData.daily.temperature_2m_max || [];
-  const minTemp = weatherData.daily.temperature_2m_min || [];
-  const directRadiationData = weatherData.hourly.direct_radiation || [];
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Weather Dashboard</h1>
       <div className={styles.chart}>
-            <ColumnChart data={humidityData} labels={hourlyLabels} />
+        <ColumnChart data={humidityData} labels={hourlyLabels} />
       </div>
       <div className={styles.chart}>
-        <TemperatureLineChart
-              labels={dailyLabels}
-          maxTemp={maxTemp}
-          minTemp={minTemp}
+        <TemperatureLineChart labels={dailyLabels} maxTemp={maxTemp} minTemp={minTemp}
         />
       </div>
       <div className={styles.chart}>
-            <AreaChart data={directRadiationData} labels={hourlyLabels} />
+        <AreaChart data={directRadiationData} labels={hourlyLabels} />
       </div>
     </div>
   );
