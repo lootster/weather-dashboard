@@ -63,11 +63,13 @@ function App() {
   }, []);
 
   if (loading) {
-    return <p>Loading weather data...</p>; // Show a loading message while data is being fetched
+    // Show a loading message while data is being fetched
+    return <p>Loading weather data...</p>;
   }
 
   if (error) {
-    return <p className={styles.error}>{error}</p>; // Show an error message if there is an error or if the app is offline with no data
+    // Show an error message if there is an error or if the app is offline with no data
+    return <p className={styles.error}>{error}</p>;
   }
 
   // Ensure that the required data is available
@@ -77,6 +79,9 @@ function App() {
 
   // Extract relevant data for relative humidity chart
   const humidityData = weatherData.hourly.relativehumidity_2m;
+  const maxTemp = weatherData.daily.temperature_2m_max || [];
+  const minTemp = weatherData.daily.temperature_2m_min || [];
+  const directRadiationData = weatherData.hourly.direct_radiation || [];
 
   // Labels for hourly data (relative humidity and radiation)
   const hourlyLabels = weatherData.hourly.time.map((timestamp: string) =>
@@ -87,10 +92,6 @@ function App() {
   const dailyLabels = weatherData.daily.time.map((timestamp: string) =>
     format(new Date(timestamp), "dd MMM yyyy")
   );
-  
-  const maxTemp = weatherData.daily.temperature_2m_max || [];
-  const minTemp = weatherData.daily.temperature_2m_min || [];
-  const directRadiationData = weatherData.hourly.direct_radiation || [];
 
   return (
     <div
@@ -100,9 +101,11 @@ function App() {
     >
       <h1 className={styles.title}>Weather Dashboard</h1>
       <p>Data source: {source}</p>
+
       <div className={styles.chart}>
         <ColumnChart data={humidityData} labels={hourlyLabels} />
       </div>
+
       <div className={styles.chart}>
         <TemperatureLineChart
           labels={dailyLabels}
@@ -110,6 +113,7 @@ function App() {
           minTemp={minTemp}
         />
       </div>
+
       <div className={styles.chart}>
         <AreaChart data={directRadiationData} labels={hourlyLabels} />
       </div>
